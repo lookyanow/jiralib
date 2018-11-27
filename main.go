@@ -53,7 +53,7 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		issue, res, err := jiraClient.Issue.Get("RE-188", nil)
+		issue, res, err := jiraClient.Issue.Get("DEMO-10", nil)
 		if err != nil {
 			panic(err)
 
@@ -68,33 +68,32 @@ func main() {
 			fmt.Printf("Type: %s\n", issue.Fields.Type.Name)
 			fmt.Printf("Priority: %s\n", issue.Fields.Priority.Name)
 			fmt.Printf("%s\n", issue.Fields.Assignee.DisplayName)
+			fmt.Printf("%+v\n", issue.Fields.Labels)
 		}
 
-		i := jira.Issue{
-			Fields: &jira.IssueFields{
-				Assignee: &jira.User{
-					Name: "ilukyanov",
-				},
-				Reporter: &jira.User{
-					Name: "ilukyanov",
-				},
-				Description: "Test tasks made by go-jira lib",
-				Type: jira.IssueType{
-					Name: "Задача",
-				},
-				Project: jira.Project{
-					Key: "DEM",
-				},
-				Summary: "Go-jira lib test task",
+		labels := append(issue.Fields.Labels, "test1")
+
+		query := map[string]interface{}{
+			"fields" : map[string]interface{}{
+				"labels": labels,
 			},
 		}
 
-		_, _, err = jiraClient.Issue.Create(&i)
+
+		_, err = jiraClient.Issue.UpdateIssue("DEMO-10", query)
 		if err != nil{
 			panic(err)
 		}
-		//fmt.Printf("Issue  %s: %+v\n", issue2.Key, issue2.Fields.Summary)
+
+		query = map[string]interface{}{
+			"fields" : map[string]interface{}{
+				"description" : "new description",
+			},
+		}
+		_, err = jiraClient.Issue.UpdateIssue("DEMO-10", query)
+		if err != nil{
+			panic(err)
+		}
+		}
 
 	}
-
-}
