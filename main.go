@@ -49,11 +49,11 @@ func cloneRequest(r *http.Request) *http.Request {
 func main() {
 
 	tp := JiraAuthTransport{Token:""}
-	jiraClient, err := jira.NewClient(tp.Client(), "https://jit.ozon.ru/")
+	jiraClient, err := jira.NewClient(tp.Client(), "https://jira.ozon.ru/")
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		issue, res, err:= jiraClient.Issue.Get("RE-262", nil)
+		issue, res, err := jiraClient.Issue.Get("RE-188", nil)
 		if err != nil {
 			panic(err)
 
@@ -67,7 +67,33 @@ func main() {
 			fmt.Printf("%s: %+v\n", issue.Key, issue.Fields.Summary)
 			fmt.Printf("Type: %s\n", issue.Fields.Type.Name)
 			fmt.Printf("Priority: %s\n", issue.Fields.Priority.Name)
+			fmt.Printf("%s\n", issue.Fields.Assignee.DisplayName)
 		}
+
+		i := jira.Issue{
+			Fields: &jira.IssueFields{
+				Assignee: &jira.User{
+					Name: "ilukyanov",
+				},
+				Reporter: &jira.User{
+					Name: "ilukyanov",
+				},
+				Description: "Test tasks made by go-jira lib",
+				Type: jira.IssueType{
+					Name: "Задача",
+				},
+				Project: jira.Project{
+					Key: "DEM",
+				},
+				Summary: "Go-jira lib test task",
+			},
+		}
+
+		_, _, err = jiraClient.Issue.Create(&i)
+		if err != nil{
+			panic(err)
+		}
+		//fmt.Printf("Issue  %s: %+v\n", issue2.Key, issue2.Fields.Summary)
 
 	}
 
