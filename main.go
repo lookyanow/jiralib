@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/andygrunwald/go-jira"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
+	"time"
 )
 
 
@@ -70,8 +72,12 @@ func main() {
 			fmt.Printf("%s\n", issue.Fields.Assignee.DisplayName)
 			fmt.Printf("%+v\n", issue.Fields.Labels)
 		}
+		rand.Seed(time.Now().UTC().UnixNano())
 
-		labels := append(issue.Fields.Labels, "test1")
+		label := fmt.Sprintf("test%v",rand.Intn(10))
+
+		fmt.Printf("Random label %s", label)
+		labels := append(issue.Fields.Labels, label)
 
 		query := map[string]interface{}{
 			"fields" : map[string]interface{}{
@@ -87,7 +93,7 @@ func main() {
 
 		query = map[string]interface{}{
 			"fields" : map[string]interface{}{
-				"description" : "new description",
+				"description" : "Second test description",
 			},
 		}
 		_, err = jiraClient.Issue.UpdateIssue("DEMO-10", query)
