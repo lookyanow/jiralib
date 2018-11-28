@@ -74,9 +74,9 @@ func main() {
 		}
 		rand.Seed(time.Now().UTC().UnixNano())
 
-		label := fmt.Sprintf("test%v",rand.Intn(10))
+		label := fmt.Sprintf("test%v",rand.Intn(100))
 
-		fmt.Printf("Random label %s", label)
+		fmt.Printf("Random label %s\n", label)
 		labels := append(issue.Fields.Labels, label)
 
 		query := map[string]interface{}{
@@ -91,15 +91,21 @@ func main() {
 			panic(err)
 		}
 
-		query = map[string]interface{}{
-			"fields" : map[string]interface{}{
-				"description" : "Second test description",
-			},
+
+		fields := map[string]interface{}{
+			"summary": "go-jira second test",
+			"description" : "second description",
 		}
+
+		query = map[string]interface{}{
+			"fields": fields,
+		}
+
 		_, err = jiraClient.Issue.UpdateIssue("DEMO-10", query)
 		if err != nil{
 			panic(err)
 		}
 		}
+
 
 	}
