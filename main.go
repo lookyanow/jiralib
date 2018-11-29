@@ -93,8 +93,8 @@ func main() {
 
 
 		fields := map[string]interface{}{
-			"summary": "go-jira second test",
-			"description" : "second description",
+			"summary": "go-jira library test",
+			"description" : "new description",
 		}
 
 		query = map[string]interface{}{
