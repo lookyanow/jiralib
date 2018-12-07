@@ -1,14 +1,17 @@
 package main
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"github.com/andygrunwald/go-jira"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
-	"time"
+	"reflect"
+	"strings"
 )
 
+const JiraToken = ""
 
 type JiraAuthTransport struct {
 	Token string
@@ -48,64 +51,154 @@ func cloneRequest(r *http.Request) *http.Request {
 	return r2
 }
 
-func main() {
+type Issue struct {
+	Id     string       `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Key    string       `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	Fields *IssueFields `protobuf:"bytes,3,opt,name=fields" json:"fields,omitempty"`
+}
 
-	tp := JiraAuthTransport{Token:""}
+type IssueFields struct {
+	Summary        string                `protobuf:"bytes,1,opt,name=summary,proto3" json:"summary,omitempty"`
+	Description    string                `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	Assignee       *IssueFields_Assignee `protobuf:"bytes,3,opt,name=assignee" json:"assignee,omitempty"`
+	Labels         []string              `protobuf:"bytes,4,rep,name=labels" json:"labels,omitempty"`
+	Status         *IssueFields_Status   `protobuf:"bytes,5,opt,name=status" json:"status,omitempty"`
+	Project        string                `protobuf:"bytes,6,opt,name=Project,json=customfield_18900,proto3" json:"customfield_18900"`
+	BranchName     string                `protobuf:"bytes,7,opt,name=BranchName,json=customfield_18901,proto3" json:"customfield_18901"`
+	UnitTestPassed string                `protobuf:"bytes,8,opt,name=UnitTestPassed,json=customfield_18807,proto3" json:"customfield_18807"`
+}
+
+type IssueFields_Assignee struct {
+	Name         string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Key          string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	EmailAddress string `protobuf:"bytes,3,opt,name=emailAddress,proto3" json:"emailAddress,omitempty"`
+	DisplayName  string `protobuf:"bytes,4,opt,name=displayName,proto3" json:"displayName,omitempty"`
+}
+
+type IssueFields_Status struct {
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+}
+
+
+func JiraTokenToUserPass(token string) (user string, pass string){
+	sDec, _ := base64.StdEncoding.DecodeString(token)
+	s := strings.SplitN(string(sDec), ":",2)
+	return s[0], s[1]
+}
+
+func GetIssue(issue string) (*Issue, error) {
+	user, pass := JiraTokenToUserPass(JiraToken)
+	tp := jira.BasicAuthTransport{Username: user, Password: pass}
 	jiraClient, err := jira.NewClient(tp.Client(), "https://jira.ozon.ru/")
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		issue, res, err := jiraClient.Issue.Get("DEMO-10", nil)
+
+		issue1, _, err := jiraClient.Issue.Get(issue, nil)
 		if err != nil {
-			panic(err)
-
-			data, err := ioutil.ReadAll(res.Body)
-			if err != nil {
-				fmt.Printf("Read Error: %s\n", err)
-			}
-
-			fmt.Printf("%+v\n", string(data))
-		}else {
-			fmt.Printf("%s: %+v\n", issue.Key, issue.Fields.Summary)
-			fmt.Printf("Type: %s\n", issue.Fields.Type.Name)
-			fmt.Printf("Priority: %s\n", issue.Fields.Priority.Name)
-			fmt.Printf("%s\n", issue.Fields.Assignee.DisplayName)
-			fmt.Printf("%+v\n", issue.Fields.Labels)
+			return nil, err
+		} else {
+			data, err := json.Marshal(issue1)
+			o := &Issue{}
+			err = json.Unmarshal(data, o)
+			return o, err
 		}
-		rand.Seed(time.Now().UTC().UnixNano())
+	}
+	return nil, err
+}
 
-		label := fmt.Sprintf("test%v",rand.Intn(100))
+func SetIssueFields(issue string, fieldValues map[string]interface{}) error {
 
-		fmt.Printf("Random label %s\n", label)
-		labels := append(issue.Fields.Labels, label)
+	issue = strings.ToUpper(issue)
 
-		query := map[string]interface{}{
-			"fields" : map[string]interface{}{
-				"labels": labels,
-			},
+	query := map[string]interface{}{
+		"fields": fieldValues,
+	}
+	tp := JiraAuthTransport{Token:JiraToken}
+	jiraClient, err := jira.NewClient(tp.Client(), "https://jit.ozon.ru/")
+	if err != nil {
+		return err
+	}
+
+	r, err := jiraClient.Issue.UpdateIssue(issue, query)
+	if err != nil {
+		body, err := ioutil.ReadAll(r.Body)
+		fmt.Println(string(body))
+		return err
+	}
+	return err
+
+}
+
+func SetIssueField(issue, field string, value interface{}) error {
+
+	query := map[string]interface{}{
+		"fields": map[string]interface{}{
+			field: value,
+		},
+	}
+
+	tp := JiraAuthTransport{Token:JiraToken}
+	jiraClient, err := jira.NewClient(tp.Client(), "https://jira.ozon.ru/")
+	if err != nil {
+		return err
+	} else {
+
+		_, err := jiraClient.Issue.UpdateIssue(issue, query)
+		if err != nil {
+
+			return err
 		}
-
-
-		_, err = jiraClient.Issue.UpdateIssue("DEMO-10", query)
-		if err != nil{
-			panic(err)
-		}
-
-
-		fields := map[string]interface{}{
-			"summary": "go-jira library test",
-			"description" : "new description",
-		}
-
-		query = map[string]interface{}{
-			"fields": fields,
-		}
-
-		_, err = jiraClient.Issue.UpdateIssue("DEMO-10", query)
-		if err != nil{
-			panic(err)
-		}
-		}
-
 
 	}
+	return err
+
+}
+
+func getUnitFieldNames() string {
+	t := reflect.TypeOf(IssueFields{})
+	field1, _ := t.FieldByName("UnitTestPassed")
+	tag1 := field1.Tag.Get("json")
+	return tag1
+}
+
+func getProjectBranchFieldNames() (string, string) {
+	t := reflect.TypeOf(IssueFields{})
+	field1, _ := t.FieldByName("Project")
+	field2, _ := t.FieldByName("BranchName")
+	tag1 := field1.Tag.Get("json")
+	tag2 := field2.Tag.Get("json")
+	return tag1, tag2
+}
+
+func main() {
+	issue, err := GetIssue("DEMO-10")
+	if err != nil{
+		panic(err)
+	} else {
+		//data, err := json.Marshal(issue)
+		//fmt.Printf("%s\n", string(data))
+		fmt.Printf("%s: %+v\n", issue.Key, issue.Fields.Summary)
+		//fmt.Printf("Type: %s\n", issue.Fields.Type.Name)
+		//fmt.Printf("Priority: %s\n", issue.Fields.Priority.Name)
+		fmt.Printf("%s\n", issue.Fields.Assignee.DisplayName)
+		fmt.Printf("%+v\n", issue.Fields.UnitTestPassed)
+		fmt.Printf("%+v\n", issue.Fields.Project)
+		fmt.Printf("%+v\n", issue.Fields.BranchName)
+		fmt.Println(reflect.TypeOf(issue.Fields.UnitTestPassed))
+
+		projectName, branchName := getProjectBranchFieldNames()
+		unitTestName := getUnitFieldNames()
+		fmt.Println(projectName, branchName, unitTestName, '\n')
+
+		//labels := append(issue.Fields.Labels, "asd")
+		fields := map[string]interface{}{
+			unitTestName: "1",
+		}
+		err = SetIssueFields("CHECKCART-555", fields)
+		if err != nil{
+			panic(err)
+		}
+		fmt.Println("Issue updated")
+	}
+}
