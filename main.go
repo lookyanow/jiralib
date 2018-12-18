@@ -182,23 +182,39 @@ func main() {
 		//fmt.Printf("Type: %s\n", issue.Fields.Type.Name)
 		//fmt.Printf("Priority: %s\n", issue.Fields.Priority.Name)
 		fmt.Printf("%s\n", issue.Fields.Assignee.DisplayName)
-		fmt.Printf("%+v\n", issue.Fields.UnitTestPassed)
 		fmt.Printf("%+v\n", issue.Fields.Project)
-		fmt.Printf("%+v\n", issue.Fields.BranchName)
-		fmt.Println(reflect.TypeOf(issue.Fields.UnitTestPassed))
+		fmt.Printf("%+v\n", issue.Fields.Status.Name)
 
-		projectName, branchName := getProjectBranchFieldNames()
-		unitTestName := getUnitFieldNames()
-		fmt.Println(projectName, branchName, unitTestName, '\n')
 
-		//labels := append(issue.Fields.Labels, "asd")
-		fields := map[string]interface{}{
-			unitTestName: "1",
-		}
-		err = SetIssueFields("CHECKCART-555", fields)
-		if err != nil{
+		tp := JiraAuthTransport{Token:JiraToken}
+		jiraClient, err := jira.NewClient(tp.Client(), "https://jira.ozon.ru/")
+		if err != nil {
 			panic(err)
 		}
+
+		trans, _, err := jiraClient.Issue.GetTransitions("DEMO-10")
+		if err != nil {
+			panic(err)
+		}
+		transition := ""
+		for _, r := range trans {
+			if r.Name == "Start"{
+				transition = r.ID
+			}
+			fmt.Printf("%s %s\n", r.ID, r.Name)
+		}
+		fmt.Println(transition)
+
+		comment := &jira.Comment{
+			Body: "test failed",
+		}
+		comm, res, err := jiraClient.Issue.AddComment("DEMO-10", comment)
+		if err != nil{
+			panic(err)
+			fmt.Printf("%d responce code", res.StatusCode)
+			fmt.Println(comm.Author.Name)
+		}
+		fmt.Println(comm.Author.Name)
 		fmt.Println("Issue updated")
 	}
 }
