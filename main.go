@@ -13,13 +13,13 @@ import (
 
 const JiraToken = ""
 
-type JiraAuthTransport struct {
+type jiraAuthTransport struct {
 	Token string
 
 	Transport http.RoundTripper
 }
 
-func (t *JiraAuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+func (t *jiraAuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req2 := cloneRequest(req) // per RoundTripper contract
 
 	//req2.SetBasicAuth(t.Username, t.Password)
@@ -27,11 +27,11 @@ func (t *JiraAuthTransport) RoundTrip(req *http.Request) (*http.Response, error)
 	return t.transport().RoundTrip(req2)
 }
 
-func (t *JiraAuthTransport) Client() *http.Client {
+func (t *jiraAuthTransport) Client() *http.Client {
 	return &http.Client{Transport: t}
 }
 
-func (t *JiraAuthTransport) transport() http.RoundTripper {
+func (t *jiraAuthTransport) transport() http.RoundTripper {
 	if t.Transport != nil {
 		return t.Transport
 	}
@@ -89,7 +89,7 @@ func JiraTokenToUserPass(token string) (user string, pass string){
 func GetIssue(issue string) (*Issue, error) {
 	user, pass := JiraTokenToUserPass(JiraToken)
 	tp := jira.BasicAuthTransport{Username: user, Password: pass}
-	jiraClient, err := jira.NewClient(tp.Client(), "https://jira.ozon.ru/")
+	jiraClient, err := jira.NewClient(tp.Client(), "https://jit.ozon.ru/")
 	if err != nil {
 		fmt.Println(err)
 	} else {
@@ -114,7 +114,7 @@ func SetIssueFields(issue string, fieldValues map[string]interface{}) error {
 	query := map[string]interface{}{
 		"fields": fieldValues,
 	}
-	tp := JiraAuthTransport{Token:JiraToken}
+	tp := jiraAuthTransport{Token: JiraToken}
 	jiraClient, err := jira.NewClient(tp.Client(), "https://jit.ozon.ru/")
 	if err != nil {
 		return err
@@ -138,7 +138,7 @@ func SetIssueField(issue, field string, value interface{}) error {
 		},
 	}
 
-	tp := JiraAuthTransport{Token:JiraToken}
+	tp := jiraAuthTransport{Token: JiraToken}
 	jiraClient, err := jira.NewClient(tp.Client(), "https://jira.ozon.ru/")
 	if err != nil {
 		return err
@@ -172,7 +172,7 @@ func getProjectBranchFieldNames() (string, string) {
 }
 
 func main() {
-	issue, err := GetIssue("DEMO-10")
+	issue, err := GetIssue("SF-1355")
 	if err != nil{
 		panic(err)
 	} else {
@@ -186,13 +186,14 @@ func main() {
 		fmt.Printf("%+v\n", issue.Fields.Status.Name)
 
 
-		tp := JiraAuthTransport{Token:JiraToken}
+		tp := jiraAuthTransport{Token: JiraToken}
 		jiraClient, err := jira.NewClient(tp.Client(), "https://jira.ozon.ru/")
 		if err != nil {
 			panic(err)
 		}
 
-		trans, _, err := jiraClient.Issue.GetTransitions("DEMO-10")
+
+		trans, _, err := jiraClient.Issue.GetTransitions("RE-350")
 		if err != nil {
 			panic(err)
 		}
@@ -204,7 +205,7 @@ func main() {
 			fmt.Printf("%s %s\n", r.ID, r.Name)
 		}
 		fmt.Println(transition)
-
+/*
 		comment := &jira.Comment{
 			Body: "test failed",
 		}
@@ -215,6 +216,6 @@ func main() {
 			fmt.Println(comm.Author.Name)
 		}
 		fmt.Println(comm.Author.Name)
-		fmt.Println("Issue updated")
+		fmt.Println("Issue updated")*/
 	}
 }
